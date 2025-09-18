@@ -4,7 +4,7 @@ param(
     #0 = unblock, 1 = block
     [string]$Action,
     
-    [string]$DomainsFile = "C:\Users\ajay-winX\a_src\github\win10-hosts-blocking\domains.txt",
+    [string]$DomainsFile = "C:\Users\ajay-winX\a_src\github\win10-scripts-run\win10-hosts-blocking\domains.txt",
     [string]$HostsFile = "$env:SystemRoot\System32\drivers\etc\hosts",
     [string]$StartTag = "# DOMAIN BLOCK START",
     [string]$EndTag = "# DOMAIN BLOCK END"
