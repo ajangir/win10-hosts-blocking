@@ -296,7 +296,7 @@ Test-DomainsFile
 do {
     Write-Host "`nWhat would you like to do?" -ForegroundColor Cyan
     $action = Read-Host "Enter your choice (1/y, 0/n, d, s, b, r, q)"
-    
+    $default = 0
     switch ($action.ToLower()) {
         {$_ -in @('1', 'y')} {
             Write-Host "`nBlocking domains according to domains file..." -ForegroundColor Yellow
@@ -329,11 +329,15 @@ do {
             exit 0
         }
         default {
+			$default = 1
             Write-Host "Invalid input! Please use: 1/y, 0/n, d, s, b, r, or q" -ForegroundColor Red
         }
     }
     
     if ($action.ToLower() -notin @('d', 's', 'b', 'r', 'q')) {
+		if ($default -eq 1){
+			continue
+		}
         $continue = Read-Host "`nPerform another action? (y/n)"
         if ($continue.ToLower() -notin @('y', 'yes')) {
             break
