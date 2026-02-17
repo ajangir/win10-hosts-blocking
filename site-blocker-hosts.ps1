@@ -1,10 +1,19 @@
+# param(
+#     [string]$DomainsFile = "C:\Users\ajay-winX\a_src\github\win10-scripts-run\win10-hosts-blocking\domains.txt",
+#     [string]$HostsFile = "$env:SystemRoot\System32\drivers\etc\hosts",
+#     #[string]$HostsFile = "C:\Users\ajay-winX\a_src\github\win10-scripts-run\win10-hosts-blocking\hosts",
+#     [string]$StartTag = "# DOMAIN BLOCK START",
+#     [string]$EndTag = "# DOMAIN BLOCK END"
+# )
+
 param(
+    [Parameter(Position = 0)]
+    [string]$Action,
     [string]$DomainsFile = "C:\Users\ajay-winX\a_src\github\win10-scripts-run\win10-hosts-blocking\domains.txt",
     [string]$HostsFile = "$env:SystemRoot\System32\drivers\etc\hosts",
     [string]$StartTag = "# DOMAIN BLOCK START",
-    [string]$EndTag = "# DOMAIN BLOCK END"
+    [string]$EndTag   = "# DOMAIN BLOCK END"
 )
-
 function Show-Guidelines {
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "    DOMAIN BLOCKING SCRIPT GUIDELINES" -ForegroundColor Cyan
@@ -15,6 +24,8 @@ function Show-Guidelines {
     Write-Host "REQUIREMENTS:" -ForegroundColor Green
     Write-Host "  • Must run as Administrator" -ForegroundColor White
     Write-Host "  • Domains file must exist: $DomainsFile" -ForegroundColor White
+    Write-Host "  • Action: $Action" -ForegroundColor White
+
     Write-Host ""
     Write-Host "DOMAIN FILE FORMAT:" -ForegroundColor Green
     Write-Host "  • One domain per line (e.g., example.com)" -ForegroundColor White
@@ -24,6 +35,7 @@ function Show-Guidelines {
     Write-Host "AVAILABLE ACTIONS:" -ForegroundColor Green
     Write-Host "  1/y  - Block domains (respects # comments in domains file)" -ForegroundColor White
     Write-Host "  0/n  - Unblock ALL domains (comments out active blocks)" -ForegroundColor White
+    Write-Host "  a    - Block all domains" -ForegroundColor White
     Write-Host "  d    - Edit domains file (opens with Notepad++ or Notepad)" -ForegroundColor White
     Write-Host "  s    - Show current status (blocked/unblocked domains)" -ForegroundColor White
     Write-Host "  b    - Backup current hosts file" -ForegroundColor White
@@ -178,7 +190,7 @@ function Restore-HostsFile {
 
 function Get-BlockedDomainEntry {
     param([string]$domain)
-    return "0.0.0.0 $domain"
+    return @("0.0.0.0 $domain","0.0.0.0 www.$domain")
 }
 
 function Get-CommentedDomainEntry {
@@ -261,7 +273,41 @@ function Update-DomainBlocking {
             }
         }
     }
-    
+    elseif ($Action -eq "a") {
+        Write-Host "Processing all domains blocking..." -ForegroundColor Yellow
+        
+        # If tags don't exist, add them at the end
+        if ($startIndex -eq -1 -or $endIndex -eq -1) {
+            Write-Host "Adding domain block section to hosts file..." -ForegroundColor Yellow
+            $newHostsContent = $hostsContent + @("", $StartTag, $EndTag)
+            $startIndex = $newHostsContent.Count - 2
+            $endIndex = $newHostsContent.Count - 1
+        } else {
+            $newHostsContent = $hostsContent
+        }
+        
+        # Process domains from file
+        $domainEntries = @()
+        foreach ($domain in $domains) {
+            $domain = $domain.Trim()
+            if ($domain.StartsWith("#")) {
+                # commented Domain must be blocked
+                $cleanDomain = $domain.Substring(1).Trim()
+                $domainEntries += Get-BlockedDomainEntry $cleanDomain
+                Write-Host " ● Blocking: $cleanDomain" -ForegroundColor Red
+            } else {
+                # Domain must be blocked
+                $domainEntries += Get-BlockedDomainEntry $domain
+                Write-Host " ● Blocking: $domain" -ForegroundColor Red
+            }
+        }
+        
+        # Replace content between tags
+        $beforeBlock = $newHostsContent[0..$startIndex]
+        $afterBlock = $newHostsContent[$endIndex..($newHostsContent.Count - 1)]
+        $newHostsContent = $beforeBlock + $domainEntries + $afterBlock
+        
+    }
     # Write new hosts file
     try {
         Set-Content -Path $HostsFile -Value $newHostsContent -Encoding UTF8
@@ -291,13 +337,35 @@ Show-Guidelines
 # Pre-flight checks
 Test-AdminRights
 Test-DomainsFile
-
+# ── Non-interactive mode ───────────────────────────────
+if ($Action) {
+    $actionLower = $Action.ToLower().Trim()
+    
+    switch ($actionLower) {
+        { $_ -in '1','y' }          { Update-DomainBlocking -Action "1" }
+        { $_ -in '0','n' }          { Update-DomainBlocking -Action "0" }
+        'a'                         { Update-DomainBlocking -Action "a" }
+        'd'                         { Open-DomainsFile }
+        's'                         { Show-CurrentStatus }
+        'b'                         { Backup-HostsFile | Out-Null }
+        'r'                         { Restore-HostsFile }
+        'q'                         { Write-Host "Exit requested." -ForegroundColor Yellow; exit 0 }
+        default {
+            Write-Host "Error: Unknown action '$Action'" -ForegroundColor Red
+            Write-Host "Valid actions: 1/y  0/n  a  d  s  b  r  q" -ForegroundColor DarkYellow
+            exit 1
+        }
+    }
+    
+    Write-Host "`nNon-interactive action completed." -ForegroundColor Green
+    exit 0
+}
 # Main interaction loop
 do {
     Write-Host "`nWhat would you like to do?" -ForegroundColor Cyan
-    $action = Read-Host "Enter your choice (1/y, 0/n, d, s, b, r, q)"
+    $choice = Read-Host "Enter your choice (1/y, 0/n, a, d, s, b, r, q)"
     $default = 0
-    switch ($action.ToLower()) {
+    switch ($choice.ToLower()) {
         {$_ -in @('1', 'y')} {
             Write-Host "`nBlocking domains according to domains file..." -ForegroundColor Yellow
             Update-DomainBlocking -Action "1"
@@ -306,6 +374,11 @@ do {
         {$_ -in @('0', 'n')} {
             Write-Host "`nUnblocking all domains..." -ForegroundColor Yellow
             Update-DomainBlocking -Action "0"
+            break
+        }
+        'a' {
+            Write-Host "`nBlocking all domains according to domains file" -ForegroundColor Red
+            Update-DomainBlocking -Action "a"
             break
         }
         'd' {
@@ -330,13 +403,13 @@ do {
         }
         default {
 			$default = 1
-            Write-Host "Invalid input! Please use: 1/y, 0/n, d, s, b, r, or q" -ForegroundColor Red
+            Write-Host "Invalid input! Please use: 1/y, 0/n, a, d, s, b, r, or q" -ForegroundColor Red
         }
     }
     
-    if ($action.ToLower() -notin @('d', 's', 'b', 'r', 'q')) {
+    if ($choice.ToLower() -notin @('d', 's', 'b', 'r', 'q')) {
 		if ($default -eq 1){
-			continue
+			break
 		}
         $continue = Read-Host "`nPerform another action? (y/n)"
         if ($continue.ToLower() -notin @('y', 'yes')) {

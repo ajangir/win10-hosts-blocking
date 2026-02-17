@@ -1,7 +1,5 @@
 #youtube.com
-#www.youtube.com
 9gag.com
-www.9gag.com
 9cache.com
 4chan.org
 economictimes.indiatimes.com
@@ -10,12 +8,12 @@ instagram.com
 twitter.com
 reddit.com
 1337x.to
-https://www.1337x.to/
 torrentgalaxy.one
-www.seedr.cc
+seedr.cc
 en.fmovies24.watch
 vegamovies.is
-https://mkvcinemas.kiwi/
-https://mkvcinemas.prof/
-https://moviesmod.plus/
-https://moviesmod.cafe/
+mkvcinemas.kiwi
+mkvcinemas.prof
+moviesmod.plus
+moviesmod.cafe
+snowfl.com
