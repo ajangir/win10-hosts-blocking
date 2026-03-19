@@ -17,4 +17,5 @@ mkvcinemas.prof
 moviesmod.plus
 moviesmod.cafe
 snowfl.com
-new1.moviesdrive.surf
+moviesdrives.cv/
+new1.moviesdrives.my/
